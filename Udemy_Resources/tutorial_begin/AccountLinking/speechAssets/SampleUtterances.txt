@@ -1,5 +1,0 @@
-EmailCheckIntent check my email
-EmailCheckIntent whats in my inbox
-EmailCheckIntent whats new in my inbox
-EmailCheckIntent whats new 
-
