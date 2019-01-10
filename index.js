@@ -18,22 +18,23 @@ try{
         if(request.type === "LaunchRequest"){
             //create options object, using let because we only need it locally
             let options = {};
-            options.speechText = "Welcome to Greetings Skill, made from a tutorial. You can greet your friends using this skill. Who would you liek to greet?";
+            options.speechText = "Welcome to Greetings Skill, made from a tutorial. You can greet your friends using this skill. Who would you like to greet?";
             options.repromptText = "Whom do you want to greet? Example: Say hello to John.";
             options.endSession = false;
     
-            //pass it to succed context
+            //pass it to succeed context
             context.succeed(buildResponse(options));
     
         //if intent request, map to correct intent
         } else if(request.type === "IntentRequest"){                        //if there is an IntentREquest
             let options ={};                                                //create options Object
             if(request.intent.name === "HelloIntent"){                      //if intent is HelloIntent
-                let name = request.intent.slots.FirstName.value;            //get the valeu fo the guest's firstname
-                options.speechText = "Hello" +name+".";                     //set the greeting
+                let name = request.intent.slots.FirstName.value;            //get the value fo the guest's firstname
+                options.speechText = "Hello " + name +". ";                 //set the greeting
                 options.speechText += getWish();                            //with the correct wish
                 options.endSession = true;                                  //set endSession to true so the session will end after
-            }else throw "Unknown Intent";//context.fail("Unkown Intent");
+                context.succeed(buildResponse(options));                    //say success and build response 
+            }else throw "Unknown Intent";//context.fail("Unknown Intent");
     
         //if end request, clean up
         } else if(request.type === "SessionEndedRequest"){
@@ -49,27 +50,29 @@ try{
 //gets the time of day to decide whether to say "good morning" or "good evening"
 function getWish(){
     var myDate = new Date();                        //native date object
-    var hours = myDate.getUTCHours;                 //gets standard hours in the timezone
+    var hours = myDate.getUTCHours();               //gets standard hours in the timezone
+    console.log(hours + " hours");
     if(hours < 0) hours+=24;                        //if less than 24 add 24
+    hours -= 5;                                     //from UTC to EST
 
     //distinguish if its morning or night and print the correct message
     if(hours < 12){                             
         return 'Good Morning';
     }
-    else if (hours < 16){
+    else if (hours < 17){
         return 'Good Afternoon.';
     }
-    else return 'Good Evening';
+    else return 'Good Evening.';
 }//getWish
 
 //forms a response based on the properties of the options object
 function buildResponse(options){
     var response = {
-        version = "1.0",
+        version : "1.0",
         response: {
             outputSpeech: {
               type: "PlainText",
-              text: options.text,
+              text: options.speechText
             },
             /*
             we will not be using a card yet
@@ -102,6 +105,6 @@ function buildResponse(options){
               }
         };
     };//if
-
-    return  response;
+    
+    return response;
 }
