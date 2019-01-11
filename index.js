@@ -1,5 +1,8 @@
 'use strict mode';
 
+//include http module for API access
+var http = require('http');
+
 /*
 event is the request object of the event.json file
 context will communicate with the lambda service. It has "success" and "fail"
@@ -26,15 +29,28 @@ try{
             context.succeed(buildResponse(options));
     
         //if intent request, map to correct intent
-        } else if(request.type === "IntentRequest"){                        //if there is an IntentREquest
-            let options ={};                                                //create options Object
-            if(request.intent.name === "HelloIntent"){                      //if intent is HelloIntent
-                let name = request.intent.slots.FirstName.value;            //get the value fo the guest's firstname
-                options.speechText = "Hello " + name +". ";                 //set the greeting
-                options.speechText += getWish();                            //with the correct wish
-                options.endSession = true;                                  //set endSession to true so the session will end after
-                context.succeed(buildResponse(options));                    //say success and build response 
-            }else throw "Unknown Intent";//context.fail("Unknown Intent");
+        } else if(request.type === "IntentRequest"){                                //if there is an IntentREquest
+            let options ={};                                                        //create options Object
+            
+            if(request.intent.name === "HelloIntent"){                              //if intent is HelloIntent
+                let name = request.intent.slots.FirstName.value;                    //get the value fo the guest's firstname
+                options.speechText = `Hello <say-as interpret-as="spell-out">${name}</say-as> ${name}. `;                         //set the greeting
+                options.speechText += getWish();                                    //with the correct wish
+                
+                //concat a quote to the speechText
+                getQuote(function(quote,err) {
+                    if(err){
+                        context.fail(err);                                          //try-catch will not cathc teh async error, so use context
+                    } else {
+                        options.speechText += quote;
+                        /* move the below into the callback function bc otherwise it will be 
+                        elcuded due to the async nature of the function */
+                        options.endSession = true;                                  //set endSession to true so the session will end after
+                        context.succeed(buildResponse(options));                    //say success and build response 
+                    }//ifelse
+                });//getQuote
+                
+            }else throw "Unknown Intent";    //context.fail("Unknown Intent");
     
         //if end request, clean up
         } else if(request.type === "SessionEndedRequest"){
@@ -60,10 +76,37 @@ function getWish(){
         return 'Good Morning';
     }
     else if (hours < 17){
-        return 'Good Afternoon.';
+        return 'Good Afternoon. ';
     }
-    else return 'Good Evening.';
+    else return 'Good Evening. ';
 }//getWish
+
+//this function gets a random quote from an API
+function getQuote(callback){
+    //open api link
+    var url = "http://api.forismatic.com/api/1.0/json?method=getQuote&lang=en&format=json";
+    var req = http.get(url, function(res){
+        var body = '';
+        
+        //on data event, read chunk of data to body onject
+        res.on('data', function(chunk){
+            body+= chunk;
+        });
+
+        //on end event, parse the JSON data from the api url
+        res.on('end', function(){
+            body = body.replace(/\\/g,'');              //the JSON has extra escpae charachters that we need to remove globally
+            var quote = JSON.parse(body);               //parse the JSON object
+            callback(quote.quoteText);                  //we only want the quoteText field
+        });
+    });
+
+    //on error event, call the callback function
+    req.on('error', function(err){
+        callback('', err);
+    });
+};
+
 
 //forms a response based on the properties of the options object
 function buildResponse(options){
@@ -71,8 +114,10 @@ function buildResponse(options){
         version : "1.0",
         response: {
             outputSpeech: {
-              type: "PlainText",
-              text: options.speechText
+              //type: "PlainText",
+              //text: options.speechText
+              type: "SSML",
+              text: "<speak>"+options.speechText+"</speak>"
             },
             /*
             we will not be using a card yet
@@ -100,11 +145,14 @@ function buildResponse(options){
     if(options.repromptText){
         response.response.reprompt = {
             outputSpeech: {
-                type: "PlainText",
-                text: options.repromptText
+                //type: "PlainText",
+                //text: options.repromptText
+                type: "SSML",
+                text: "<speak>"+options.repromptText+"</speak>"
               }
         };
     };//if
+
     
     return response;
 }
