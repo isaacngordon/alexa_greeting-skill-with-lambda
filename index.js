@@ -68,12 +68,13 @@ function getWish(){
     var myDate = new Date();                        //native date object
     var hours = myDate.getUTCHours();               //gets standard hours in the timezone
     console.log(hours + " hours");
-    if(hours < 0) hours+=24;                        //if less than 24 add 24
     hours -= 5;                                     //from UTC to EST
+    if(hours < 0) hours+=24;                        //if less than 24 add 24
+ 
 
     //distinguish if its morning or night and print the correct message
     if(hours < 12){                             
-        return 'Good Morning';
+        return 'Good Morning. ';
     }
     else if (hours < 17){
         return 'Good Afternoon. ';
@@ -117,7 +118,7 @@ function buildResponse(options){
               //type: "PlainText",
               //text: options.speechText
               type: "SSML",
-              text: "<speak>"+options.speechText+"</speak>"
+              ssml: "<speak>"+options.speechText+"</speak>"
             },
             /*
             we will not be using a card yet
@@ -148,7 +149,7 @@ function buildResponse(options){
                 //type: "PlainText",
                 //text: options.repromptText
                 type: "SSML",
-                text: "<speak>"+options.repromptText+"</speak>"
+                ssml: "<speak>"+options.repromptText+"</speak>"
               }
         };
     };//if
