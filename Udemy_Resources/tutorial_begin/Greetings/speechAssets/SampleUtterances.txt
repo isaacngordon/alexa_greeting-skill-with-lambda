@@ -1,1 +1,21 @@
 HelloIntent say hello to {FirstName}
+
+QuoteIntent get me a quote 
+QuoteIntent read me a quote
+QuoteIntent tell me a quote 
+QuoteIntent tell me something motivational
+QuoteIntent motivate me 
+QuoteIntent inspire me 
+QuoteIntent tell me something inspirational 
+QuoteIntent I want to hear something inspirational
+QuoteIntent I want to hear something motivational 
+QuoteIntent can you give me a quote 
+QuoteIntent can you tell me a quote 
+QuoteIntent do you know any quotes
+
+NextQuoteIntent yes
+NextQuoteIntent one more
+NextQuoteIntent next quote
+NextQuoteIntent another quote
+NextQuoteIntent another quote please
+NextQuoteIntent more 

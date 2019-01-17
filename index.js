@@ -10,6 +10,13 @@ context will communicate with the lambda service. It has "success" and "fail"
 try{
     exports.handler = function(event, context){
         var request = event.request;
+
+        //get session attributes
+        var session = event.session;                //get session object    
+        if(!event.session.attributes){              //if attributes property does not exist
+            event.session.attributes = {};          //initialize it
+        }//if
+
         /*
         request.types
         1) LaunchRequest: no intents or slots, generally followed by a welcome message
@@ -19,21 +26,81 @@ try{
     
         //if a launch request, welcome the user. usually will end with a question
         if(request.type === "LaunchRequest"){
-            //create options object, using let because we only need it locally
-            let options = {};
-            options.speechText = "Welcome to Greetings Skill, made from a tutorial. You can greet your friends using this skill. Who would you like to greet?";
-            options.repromptText = "Whom do you want to greet? Example: Say hello to John.";
-            options.endSession = false;
-    
-            //pass it to succeed context
-            context.succeed(buildResponse(options));
+            
+            handleLaunchRequest(context);
     
         //if intent request, map to correct intent
-        } else if(request.type === "IntentRequest"){                                //if there is an IntentREquest
-            let options ={};                                                        //create options Object
+        } else if(request.type === "IntentRequest"){                                //if there is an IntentRequest
             
             if(request.intent.name === "HelloIntent"){                              //if intent is HelloIntent
-                let name = request.intent.slots.FirstName.value;                    //get the value fo the guest's firstname
+               
+                handleHelloIntent(request, context);
+                
+            } else if(request.intent.name === "QuoteIntent"){
+                
+                handleQuoteIntent(request, context, session);
+
+            } else if(request.intent.name === "NextQuoteIntent"){
+
+                handleNextQuoteIntent(request, context, session);
+
+            } else if(request.intent.name === "AMAZON.StopIntent" || request.intent.name === "Amazon.CancelIntent"){
+
+                context.succeed(buildResponse({
+                    speechText: "Good bye fool. ",
+                    shouldEndSession: true
+                }));
+
+            } else throw "Unknown Intent";    //context.fail("Unknown Intent");
+    
+        //if end request, clean up
+        } else if(request.type === "SessionEndedRequest"){
+    
+        //else fail and tell user
+        } else throw "Unknown intent type called."; //context.fail("Unknown intent type called."); 
+    
+    };//handler
+} catch(e){
+    console.log("Exception: " + e);
+}//try-catch
+
+//Hanldes launch requests
+function handleLaunchRequest(context){
+    //create options object, using let because we only need it locally
+    let options = {};
+    options.speechText = "Welcome to Greetings Skill, made from a tutorial. You can greet your friends using this skill. Who would you like to greet?";
+    options.repromptText = "Whom do you want to greet? Example: Say hello to John.";
+    options.endSession = false;
+
+    //pass it to succeed context
+    context.succeed(buildResponse(options));
+}//hanldeLaunchRequest
+
+//handles requests to the HelloIntent
+function handleQuoteIntent(request, context,session){
+    let options = {};
+    options.session = session;
+               
+    //concat a quote to the speechText
+    getQuote(function(quote,err) {
+        if(err){
+            context.fail(err);                                          //try-catch will not cathc teh async error, so use context
+        } else {
+            options.speechText = quote +" \nDo you want to listen to another quote?";
+            options.repromptText = "Say one more or yes.";
+            /* move the below into the callback function bc otherwise it will be 
+             elcuded due to the async nature of the function */
+            options.endSession = false;                                  //set endSession to true so the session will end after       
+            options.session.attributes.fromQuoteIntent = true;           //note that we are coming from the quote intent
+            context.succeed(buildResponse(options));                    //say success and build response 
+        }//ifelse
+    });//getQuote
+}//handleHelloINtent
+
+//handles requests to the QuoteIntent
+function handleHelloIntent(request, context){
+    let options = {};
+    let name = request.intent.slots.FirstName.value;                    //get the value fo the guest's firstname
                 options.speechText = `Hello <say-as interpret-as="spell-out">${name}</say-as> ${name}. `;                         //set the greeting
                 options.speechText += getWish();                                    //with the correct wish
                 
@@ -46,22 +113,46 @@ try{
                         /* move the below into the callback function bc otherwise it will be 
                         elcuded due to the async nature of the function */
                         options.endSession = true;                                  //set endSession to true so the session will end after
+                        
+                        //special name cases for fun
+                        if(request.intent.slots.FirstName.value === "Solomon") options.speechText = `Wow ${name}, nice beard bro.`;
+                        if(request.intent.slots.FirstName.value === "Ben") options.speechText = `Ben Thall is the best around. Pure hype, no question. I have known a lot of Ben's, they are not so good. Ben Thall? Hands down the best Ben. I know it, you know it, everybody knows it.`;
+                        if(request.intent.slots.FirstName.value === "Yogo") options.speechText = `Hello Yogo my son. It's lit fam squad.`;
+
                         context.succeed(buildResponse(options));                    //say success and build response 
                     }//ifelse
                 });//getQuote
-                
-            }else throw "Unknown Intent";    //context.fail("Unknown Intent");
-    
-        //if end request, clean up
-        } else if(request.type === "SessionEndedRequest"){
-    
-        //else fail and tell user
-        } else throw "Unknown intent type called."; //context.fail("Unknown intent type called."); 
-    
-    };//handler
-} catch(e){
-    console.log("Exception: " + e);
-}//try-catch
+}//handleQuoteIntent
+
+//handles requests to the NextQuoteIntent
+function handleNextQuoteIntent(request, context, session){
+    let options = {};
+    options.session = session;
+               
+    if(options.session.attributes.fromQuoteIntent){
+        //concat a quote to the speechText
+        getQuote(function(quote,err) {
+            if(err){
+                context.fail(err);                                          //try-catch will not cathc teh async error, so use context
+            } else {
+                options.speechText = quote + " \n Want to hear another quote? ";
+                options.repromptText = `You can say "yes" or " stop". `;
+                /* move the below into the callback function bc otherwise it will be 
+                elcuded due to the async nature of the function */
+                options.endSession = false;                                  //set endSession to true so the session will end after       
+                //options.session.attributes.fromQuoteIntent = true;         //not needed in this case
+                context.succeed(buildResponse(options));                     //say success and build response 
+            }//ifelse
+        });//getQuote
+    }//if FromQuoteIntent
+
+    else {
+        options.speechText = "Wrong invocation of the intent.";
+        options.endSession = true;
+        context.succeed(buildResponse(options));
+    }
+}//hanfleNextQuoteIntent
+
 
 //gets the time of day to decide whether to say "good morning" or "good evening"
 function getWish(){
@@ -153,6 +244,10 @@ function buildResponse(options){
               }
         };
     };//if
+
+    if(options.session && options.session.attributes){
+        response.sessionAttributes = options.session.attributes;
+    }//if
 
     
     return response;
