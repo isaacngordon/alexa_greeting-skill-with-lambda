@@ -87,7 +87,7 @@ function handleQuoteIntent(request, context,session){
             context.fail(err);                                          //try-catch will not cathc teh async error, so use context
         } else {
             options.speechText = quote +" \nDo you want to listen to another quote?";
-            options.repromptText = "Say one more or yes.";
+            options.repromptText = "You can say one more or yes.";
             /* move the below into the callback function bc otherwise it will be 
              elcuded due to the async nature of the function */
             options.endSession = false;                                  //set endSession to true so the session will end after       
@@ -95,33 +95,31 @@ function handleQuoteIntent(request, context,session){
             context.succeed(buildResponse(options));                    //say success and build response 
         }//ifelse
     });//getQuote
-}//handleHelloINtent
+}//handleQuoteIntent
 
 //handles requests to the QuoteIntent
 function handleHelloIntent(request, context){
     let options = {};
     let name = request.intent.slots.FirstName.value;                    //get the value fo the guest's firstname
-                options.speechText = `Hello <say-as interpret-as="spell-out">${name}</say-as> ${name}. `;                         //set the greeting
-                options.speechText += getWish();                                    //with the correct wish
+    options.speechText = `Hello <say-as interpret-as="spell-out">${name}</say-as> ${name}. `;                         //set the greeting
+    options.speechText += getWish();                                    //with the correct wish
                 
-                //concat a quote to the speechText
-                getQuote(function(quote,err) {
-                    if(err){
-                        context.fail(err);                                          //try-catch will not cathc teh async error, so use context
-                    } else {
-                        options.speechText += quote;
-                        /* move the below into the callback function bc otherwise it will be 
-                        elcuded due to the async nature of the function */
-                        options.endSession = true;                                  //set endSession to true so the session will end after
-                        
-                        //special name cases for fun
-                        if(request.intent.slots.FirstName.value === "Solomon") options.speechText = `Wow ${name}, nice beard bro.`;
-                        if(request.intent.slots.FirstName.value === "Ben") options.speechText = `Ben Thall is the best around. Pure hype, no question. I have known a lot of Ben's, they are not so good. Ben Thall? Hands down the best Ben. I know it, you know it, everybody knows it.`;
-                        if(request.intent.slots.FirstName.value === "Yogo") options.speechText = `Hello Yogo my son. It's lit fam squad.`;
+ //   options.cardTitle = `Hello ${name}!`;
 
-                        context.succeed(buildResponse(options));                    //say success and build response 
-                    }//ifelse
-                });//getQuote
+    //concat a quote to the speechText
+    getQuote(function(quote,err) {
+        if(err){
+            context.fail(err);                                          //try-catch will not cathc teh async error, so use context
+        } else {
+            options.speechText += quote;
+//            options.cardContent = quote;
+//            options.imageUrl = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSVgbwQWNU168tilN79DIiElBacmN8lZsGfsiKnwhDEtsI7YXD6cw";
+            /* move the below into the callback function bc otherwise it will be 
+            elcuded due to the async nature of the function */
+            options.endSession = true;                                  //set endSession to true so the session will end after
+            context.succeed(buildResponse(options));                    //say success and build response 
+        }//ifelse
+    });//getQuote
 }//handleQuoteIntent
 
 //handles requests to the NextQuoteIntent
@@ -149,10 +147,8 @@ function handleNextQuoteIntent(request, context, session){
     else {
         options.speechText = "Wrong invocation of the intent.";
         options.endSession = true;
-        context.succeed(buildResponse(options));
     }
-}//hanfleNextQuoteIntent
-
+}//handleNextQuoteIntent
 
 //gets the time of day to decide whether to say "good morning" or "good evening"
 function getWish(){
@@ -199,7 +195,6 @@ function getQuote(callback){
     });
 };
 
-
 //forms a response based on the properties of the options object
 function buildResponse(options){
     var response = {
@@ -234,6 +229,7 @@ function buildResponse(options){
         }//resposes
     };//responseObject
 
+    //if options has a reprompt text then set it
     if(options.repromptText){
         response.response.reprompt = {
             outputSpeech: {
@@ -244,6 +240,30 @@ function buildResponse(options){
               }
         };
     };//if
+    
+    /*
+    Adding Card to the response
+    */
+    
+    //see if there is a card in options to uild a card into the response
+    if(options.cardTitle){
+        response.response.card = {
+            title: options.cardTitle,
+            type: "Simple"
+        };//card
+
+        //if an image is in options, lets add it to the response card
+        if(options.imageUrl){
+            response.response.card.type = "Standard";                           //reset card type
+            response.response.card.text = options.cardContent;                  //reset text with new card content
+            response.response.card.image = {                                    //set image
+                smallImageUrl: options.image,                                       //for smaller screens
+                largeImageUrl: options.image                                        //for larger screens
+            };//image
+        }//if
+        //else set static content
+        else response.response.card.content = options.cardContent; 
+    }//if
 
     if(options.session && options.session.attributes){
         response.sessionAttributes = options.session.attributes;
